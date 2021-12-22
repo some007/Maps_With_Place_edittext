@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MapActivity"
+    tools:showIn="@layout/activity_map">
+
+    <fragment
+        android:id="@+id/map_fragment"
+        android:name="com.google.android.gms.maps.MapFragment"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+    <com.skyfishjy.library.RippleBackground
+        android:id="@+id/ripple_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:rb_color="#2355d2"
+        app:rb_duration="2000"
+        app:rb_radius="14dp"
+        app:rb_rippleAmount="4"
+        app:rb_scale="6">
+
+        <ImageView
+            android:id="@+id/ic_pin"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_centerInParent="true"
+            android:src="@drawable/ic_pin"
+            android:translationY="-18dp"
+            android:visibility="invisible" />
+    </com.skyfishjy.library.RippleBackground>
+
+    <com.mancj.materialsearchbar.MaterialSearchBar
+        android:id="@+id/searchBar"
+        style="@style/MaterialSearchBarLight"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="10dp"
+        android:elevation="3dp"
+        android:outlineProvider="bounds"
+        app:mt_hint="@string/search_place"
+        app:mt_maxSuggestionsCount="8"
+        app:mt_navIconEnabled="false"
+        app:mt_placeholder="@string/search_place"
+        app:mt_placeholderColor="@color/quantum_grey700"
+        app:mt_roundedSearchBarEnabled="false"
+        app:mt_speechMode="false" />
+
+
+
+
+</RelativeLayout>
