@@ -42,5 +42,7 @@ dependencies {
     implementation 'com.github.mancj:MaterialSearchBar:0.8.2'
     implementation 'com.skyfishjy.ripplebackground:library:1.0.1'
 
+    implementation 'pub.devrel:easypermissions:3.0.0'
+
 
 }

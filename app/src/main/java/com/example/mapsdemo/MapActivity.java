@@ -1,14 +1,22 @@
 package com.example.mapsdemo;
 
+import android.Manifest;
 import android.animation.Animator;
 import android.annotation.SuppressLint;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentSender;
+import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Handler;
 import android.os.ResultReceiver;
+
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -17,6 +25,7 @@ import android.view.View;
 import android.view.ViewAnimationUtils;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.mapsdemo.utils.FetchAddressIntentService;
@@ -63,7 +72,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private FusedLocationProviderClient mFusedLocationProviderClient;
     private Location mLAstKnownLocation;
     private LocationCallback locationCallback;
-    private final float DEFAULT_ZOOM = 20;
+    private final float DEFAULT_ZOOM = 15;
 
     //places
     private PlacesClient placesClient;
@@ -80,12 +89,14 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private int addressResultCode;
     private boolean isSupportedArea;
     private LatLng currentMarkerPosition;
+    public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
 
     //receiving
-    private String mApiKey = "" ;
+    private String mApiKey = "";
     private String[] mSupportedArea = new String[]{};
     private String mCountry = "";
     private String mLanguage = "en";
+    TextView text;
 
     private static final String TAG = MapActivity.class.getSimpleName();
 
@@ -93,13 +104,18 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
-
+        checkLocationPermission();
         initViews();
         //receiveIntent();
         initMapsAndPlaces();
+
+        text = findViewById(R.id.addressTv);
+
+
+
     }
 
-    private void initViews(){
+    private void initViews() {
         materialSearchBar = findViewById(R.id.searchBar);
         rippleBg = findViewById(R.id.ripple_bg);
 
@@ -111,7 +127,6 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 revealView(icPin);
             }
         }, 1000);
-
 
 
     }
@@ -201,6 +216,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 String suggestion = materialSearchBar.getLastSuggestions().get(position).toString();
                 materialSearchBar.setText(suggestion);
 
+
                 new Handler().postDelayed(new Runnable() {
                     @Override
                     public void run() {
@@ -225,6 +241,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                         LatLng latLng = place.getLatLng();
                         if (latLng != null) {
                             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, DEFAULT_ZOOM));
+                            text.setText(place.getName()+place.getAddress());
                         }
 
                         rippleBg.startRippleAnimation();
@@ -256,7 +273,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         });
     }
 
-    private void submitResultLocation(){
+    private void submitResultLocation() {
         // if the process of getting address failed or this is not supported area , don't submit
         if (addressResultCode == SimplePlacePicker.FAILURE_RESULT || !isSupportedArea) {
             Toast.makeText(MapActivity.this, R.string.failed_select_location, Toast.LENGTH_SHORT).show();
@@ -278,10 +295,91 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
       @param GoogleMap
      *
      * */
+    public boolean checkLocationPermission() {
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            // Should we show an explanation?
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.ACCESS_FINE_LOCATION)) {
+
+                // Show an explanation to the user *asynchronously* -- don't block
+                // this thread waiting for the user's response! After the user
+                // sees the explanation, try again to request the permission.
+                new AlertDialog.Builder(this)
+                        .setTitle("")
+                        .setMessage("")
+                        .setPositiveButton("R.string.ok", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                //Prompt the user once explanation has been shown
+                                ActivityCompat.requestPermissions(MapActivity.this,
+                                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                                        MY_PERMISSIONS_REQUEST_LOCATION);
+                            }
+                        })
+                        .create()
+                        .show();
+
+
+            } else {
+                // No explanation needed, we can request the permission.
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                        MY_PERMISSIONS_REQUEST_LOCATION);
+            }
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_LOCATION: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+
+                    // permission was granted, yay! Do the
+                    // location-related task you need to do.
+                    if (ContextCompat.checkSelfPermission(this,
+                            Manifest.permission.ACCESS_FINE_LOCATION)
+                            == PackageManager.PERMISSION_GRANTED) {
+
+                        //Request location updates:
+                        // locationManager.requestLocationUpdates(provider, 400, 1, this);
+                    }
+
+                } else {
+
+                    // permission denied, boo! Disable the
+                    // functionality that depends on this permission.
+
+                }
+                return;
+            }
+
+        }
+    }
+
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-        //mMap.setMyLocationEnabled(true);
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
+        }
+        mMap.setMyLocationEnabled(true);
         //enable location button
         mMap.getUiSettings().setMyLocationButtonEnabled(true);
         mMap.getUiSettings().setCompassEnabled(false);
@@ -403,7 +501,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                                 mFusedLocationProviderClient.requestLocationUpdates(locationRequest, null);
                             }
                         } else {
-                            //Toast.makeText(MapActivity.this, "Unable to get last location ", Toast.LENGTH_SHORT).show();
+                           Toast.makeText(MapActivity.this, "Unable to get last location ", Toast.LENGTH_SHORT).show();
                         }
                     }
                 });
