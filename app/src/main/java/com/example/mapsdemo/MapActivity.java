@@ -8,9 +8,16 @@ import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.location.Location;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.ResultReceiver;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
@@ -20,12 +27,6 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
 import com.example.mapsdemo.utils.FetchAddressIntentService;
 import com.example.mapsdemo.utils.SimplePlacePicker;
@@ -45,6 +46,7 @@ import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -67,33 +69,39 @@ import java.util.Arrays;
 import java.util.List;
 
 public class MapActivity extends AppCompatActivity implements OnMapReadyCallback {
-    public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
-    private static final String TAG = MapActivity.class.getSimpleName();
-    private final float DEFAULT_ZOOM = 15;
-    TextView text;
     //location
-    private GoogleMap mMap;
+   // private GoogleMap mMap;
     private FusedLocationProviderClient mFusedLocationProviderClient;
     private Location mLAstKnownLocation;
     private LocationCallback locationCallback;
+    private final float DEFAULT_ZOOM = 15;
+    private static final int REQUEST_CODE = 101;
+
     //places
     private PlacesClient placesClient;
     private List<AutocompletePrediction> predictionList;
+
     //views
     private MaterialSearchBar materialSearchBar;
     private View mapView;
     private RippleBackground rippleBg;
+
+
     //variables
     private String addressOutput;
     private int addressResultCode;
     private boolean isSupportedArea;
     private LatLng currentMarkerPosition;
+    public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
+
     //receiving
-    private final String mApiKey = "";
-    private final String[] mSupportedArea = new String[]{};
-    private final String mCountry = "";
-    private final String mLanguage = "en";
-    private static final int REQUEST_CODE = 101;
+    private String mApiKey = "";
+    private String[] mSupportedArea = new String[]{};
+    private String mCountry = "";
+    private String mLanguage = "en";
+    TextView text;
+
+    private static final String TAG = MapActivity.class.getSimpleName();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -101,45 +109,36 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         setContentView(R.layout.activity_map);
         checkLocationPermission();
         initViews();
-        //receiveIntent();
         initMapsAndPlaces();
 
         text = findViewById(R.id.addressTv);
 
         mFusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
-        mFusedLocationProviderClient.getLastLocation()
-                .addOnSuccessListener(this, location -> {
-                    // Got last known location. In some rare situations this can be null.
-                    if (location != null) {
-                        // Logic to handle location object
-                        if (ActivityCompat.checkSelfPermission(
-                                MapActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                                MapActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                            ActivityCompat.requestPermissions(MapActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE);
-                            return;
-                        }
-                        Task<Location> task = mFusedLocationProviderClient.getLastLocation();
-                        task.addOnSuccessListener(new OnSuccessListener<Location>() {
-                            @Override
-                            public void onSuccess(Location location) {
-                                if (location != null) {
-                                    mLAstKnownLocation = location;
-                                    Toast.makeText(getApplicationContext(), mLAstKnownLocation.getLatitude() + "" + mLAstKnownLocation.getLongitude(), Toast.LENGTH_SHORT).show();
-                                    SupportMapFragment supportMapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map_fragment);
-                                   /*assert supportMapFragment != null;
-                                    supportMapFragment.getMapAsync(MapActivity.this);*/
-                                }
-                            }
-                        });
-                    }
-                });
+        fetchLocation();
+    }
+
+    private void fetchLocation() {
+        if (ActivityCompat.checkSelfPermission(
+                this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_CODE);
+            return;
+        }
+        Task<Location> task = mFusedLocationProviderClient.getLastLocation();
+        task.addOnSuccessListener(location -> {
+            if (location != null) {
+                mLAstKnownLocation = location;
+                Toast.makeText(getApplicationContext(), mLAstKnownLocation.getLatitude() + "" + mLAstKnownLocation.getLongitude(), Toast.LENGTH_SHORT).show();
+                SupportMapFragment supportMapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map_fragment);
+                //assert supportMapFragment != null;
+                //supportMapFragment.getMapAsync(MapActivity.this);
+            }
+        });
     }
 
     private void initViews() {
         materialSearchBar = findViewById(R.id.searchBar);
         rippleBg = findViewById(R.id.ripple_bg);
-
-
         final View icPin = findViewById(R.id.ic_pin);
         new Handler().postDelayed(new Runnable() {
             @Override
@@ -158,6 +157,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         final AutocompleteSessionToken token = AutocompleteSessionToken.newInstance();
 
         MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map_fragment);
+
         mapFragment.getMapAsync(this);
         mapView = mapFragment.getView();
 
@@ -261,7 +261,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                         LatLng latLng = place.getLatLng();
                         if (latLng != null) {
                             mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, DEFAULT_ZOOM));
-                            text.setText(place.getName() + place.getAddress());
+                            text.setText(place.getName()+place.getAddress());
                         }
 
                         rippleBg.startRippleAnimation();
@@ -356,7 +356,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         switch (requestCode) {
             case MY_PERMISSIONS_REQUEST_LOCATION: {
@@ -382,12 +382,20 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 }
                 return;
             }
+            case REQUEST_CODE:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    fetchLocation();
+                }
+                break;
 
         }
     }
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
+
+
+
         mMap = googleMap;
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
@@ -424,34 +432,45 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         Task<LocationSettingsResponse> task = settingsClient.checkLocationSettings(builder.build());
 
         //if task is successful means the gps is enabled so go and get device location amd move the camera to that location
-        task.addOnSuccessListener(locationSettingsResponse -> getDeviceLocation());
+        task.addOnSuccessListener(new OnSuccessListener<LocationSettingsResponse>() {
+            @Override
+            public void onSuccess(LocationSettingsResponse locationSettingsResponse) {
+                getDeviceLocation();
+            }
+        });
 
         //if task failed means gps is disabled so ask user to enable gps
-        task.addOnFailureListener(e -> {
-            if (e instanceof ResolvableApiException) {
-                ResolvableApiException resolvable = (ResolvableApiException) e;
-                try {
-                    resolvable.startResolutionForResult(MapActivity.this, 51);
-                } catch (IntentSender.SendIntentException e1) {
-                    e1.printStackTrace();
+        task.addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                if (e instanceof ResolvableApiException) {
+                    ResolvableApiException resolvable = (ResolvableApiException) e;
+                    try {
+                        resolvable.startResolutionForResult(MapActivity.this, 51);
+                    } catch (IntentSender.SendIntentException e1) {
+                        e1.printStackTrace();
+                    }
                 }
             }
         });
-        mMap.setOnMyLocationButtonClickListener(() -> {
-            if (materialSearchBar.isSuggestionsVisible()) {
-                materialSearchBar.clearSuggestions();
+        mMap.setOnMyLocationButtonClickListener(new GoogleMap.OnMyLocationButtonClickListener() {
+            @Override
+            public boolean onMyLocationButtonClick() {
+                if (materialSearchBar.isSuggestionsVisible()) {
+                    materialSearchBar.clearSuggestions();
+                }
+                if (materialSearchBar.isSearchEnabled()) {
+                    materialSearchBar.disableSearch();
+                }
+                return false;
             }
-            if (materialSearchBar.isSearchEnabled()) {
-                materialSearchBar.disableSearch();
-            }
-            return false;
         });
 
         mMap.setOnCameraIdleListener(new GoogleMap.OnCameraIdleListener() {
             @Override
             public void onCameraIdle() {
 //                mSmallPinIv.setVisibility(View.GONE);
-                // mProgressBar.setVisibility(View.VISIBLE);
+               // mProgressBar.setVisibility(View.VISIBLE);
                 Log.i(TAG, "changing address");
 //                ToDo : you can use retrofit for this network call instead of using services
                 //hint: services is just for doing background tasks when the app is closed no need to use services to update ui
@@ -488,7 +507,8 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                             mLAstKnownLocation = task.getResult();
                             if (mLAstKnownLocation != null) {
                                 mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(mLAstKnownLocation.getLatitude(), mLAstKnownLocation.getLongitude()), DEFAULT_ZOOM));
-                            } else {
+                            }
+                            else {
                                 final LocationRequest locationRequest = LocationRequest.create();
                                 locationRequest.setInterval(1000);
                                 locationRequest.setFastestInterval(5000);
@@ -509,7 +529,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                                 mFusedLocationProviderClient.requestLocationUpdates(locationRequest, null);
                             }
                         } else {
-                            Toast.makeText(MapActivity.this, "Unable to get last location ", Toast.LENGTH_SHORT).show();
+                           Toast.makeText(MapActivity.this, "Unable to get last location ", Toast.LENGTH_SHORT).show();
                         }
                     }
                 });
@@ -529,8 +549,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     }
 
 
+
     private boolean isSupportedArea(String[] supportedAreas) {
-        if (supportedAreas.length == 0)
+        if (supportedAreas.length==0)
             return true;
 
         boolean isSupported = false;
